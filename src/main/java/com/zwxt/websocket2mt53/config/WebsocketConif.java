@@ -53,8 +53,9 @@ public class WebsocketConif {
                 @Override
                 public void onMessage(String message) {
                  /*   log.info("收到mt5返回的消息"+ message);*/
-                   // 将消息发送给fanout类型的交换器fanoutExchange,让交换器fanoutExchange发送给与之绑定的队列
-                   rabbitTemplate.send("fanoutExchange","",new Message(message.getBytes(),new MessageProperties()));
+                 // 将消息发送给fanout类型的交换器fanoutExchange,让交换器fanoutExchange发送给与之绑定的队列
+                    rabbitTemplate.send("fanoutExchange","",new Message(message.getBytes(),
+                                new MessageProperties()));
                 }
 
                 @Override

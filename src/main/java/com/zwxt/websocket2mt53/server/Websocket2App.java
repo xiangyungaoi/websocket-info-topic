@@ -27,7 +27,7 @@ public class Websocket2App {
     static Logger log = LoggerFactory.getLogger(Websocket2App.class);
     // 静态变量，用来记录当前在线连接数.应该把它设计成线程安全的.
     private static int onlineCount = 0;
-    // concurrent包的线程安全Set,用来存放每个客户端对应的WebSocketToApp2
+    // concurrent包的线程安全Set,用来存放每个客户端对应的Websocket2App
     private static ConcurrentHashMap<String, Websocket2App> webSocketToApp2S = new ConcurrentHashMap<>();
     // 与某个客户端的连接会话，需要通过它来给客户端发送数据
     private Session session;
@@ -37,7 +37,7 @@ public class Websocket2App {
     private Channel channel;
     // 客户端的标识
     private String reqid;
-    // 创建的队列
+    // 创建队列返回的结果
     private AMQP.Queue.DeclareOk declareOk;
     // 与MQ服务器的连接
     private static Connection connection;
@@ -110,8 +110,8 @@ public class Websocket2App {
     public void onMessage(String message, Session session){
         Map map = (Map) JSON.parseObject(message);
         this.reqid = (String) map.get("reqid");
-        this.symbol = (String) map.get("symbolname");
         // 获取到要过滤货币的值
+        this.symbol = (String) map.get("symbolname");
         try {
             channel.basicConsume(reqid, new Consumer() {
                 @Override
@@ -141,7 +141,7 @@ public class Websocket2App {
 
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
-                    String message = new String(body);
+                    String message = new String(body,"utf-8");
                     log.info(message);
                     Map messageMap = JSON.parseObject(message);
                     if (symbol.equals(messageMap.get("symbol"))){
