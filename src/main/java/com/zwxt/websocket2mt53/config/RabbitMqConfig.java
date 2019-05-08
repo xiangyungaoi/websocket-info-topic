@@ -5,6 +5,7 @@ import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -37,15 +38,9 @@ public class RabbitMqConfig {
     private String userName;
     // 连接的密码
     private String password;
-
-    // 连接广播模式队列的交换器
-    public static String EXCHANGE_QUEUE_BROADCAST = "exchange2Queuebroadcast";
-    // 广播模式的mq服务器
-    public static String QUEUE_BROADCAST = "broadcastQueue";
-
-    //路由键
-    public static String ROUTINGKEY_QUEUE_BROADCAST = "broadcastQueue";
-
+    // VirtualHost
+    @Value(value = "${spring.rabbitmq.virtual-host}")
+    private String VirtualHost;
 
 
 
@@ -54,18 +49,18 @@ public class RabbitMqConfig {
         CachingConnectionFactory factory = new CachingConnectionFactory(); //CachingConnectionFactory RabbitMQ的缓存连接池
         factory.setHost(host);
         factory.setPort(port);
-        factory.setVirtualHost("/");
+        factory.setVirtualHost(VirtualHost);
         factory.setUsername(userName);
         factory.setPassword(password);
-        //开启生产者发布确认,即生产者在发送消息给mq的时候，mq会返回数据告诉生产者 消息是否发送成功
-        //生产者需要添加ConfirmCallback，mq返回数据的时候执行ConfirmCallback
+        // 开启生产者发布确认,即生产者在发送消息给mq的时候，mq会返回数据告诉生产者 消息是否发送成功
+        // 生产者需要添加ConfirmCallback，mq返回数据的时候执行ConfirmCallback
         factory.setPublisherConfirms(true);
         return factory;
     }
 
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    //必须是prototype类型
+    // 必须是prototype类型
     public RabbitTemplate rabbitTemplate(){ return new RabbitTemplate(connectionFactory());}
 
     @Bean

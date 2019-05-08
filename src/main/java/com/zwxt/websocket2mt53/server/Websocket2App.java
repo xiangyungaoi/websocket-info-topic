@@ -1,19 +1,12 @@
 package com.zwxt.websocket2mt53.server;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import com.rabbitmq.client.*;
-import com.zwxt.websocket2mt53.config.RabbitMqConfig;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.connection.Connection;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import javax.websocket.*;
@@ -22,7 +15,6 @@ import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -39,18 +31,15 @@ public class Websocket2App {
     private static ConcurrentHashMap<String, Websocket2App> webSocketToApp2S = new ConcurrentHashMap<>();
     // 与某个客户端的连接会话，需要通过它来给客户端发送数据
     private Session session;
-    // 用来存放请求传递过来的参数,判断当前拿到的mq消息要不要消费
-    private  String uId;
     // 存放前端需要的货币类型，用来过滤货币
     private String symbol;
-
+    // 用于创建队列的通道
     private Channel channel;
-
+    // 客户端的标识
     private String reqid;
-
     // 创建的队列
     private AMQP.Queue.DeclareOk declareOk;
-
+    // 与MQ服务器的连接
     private static Connection connection;
     @Autowired
     public Websocket2App(Connection connection){
@@ -97,9 +86,8 @@ public class Websocket2App {
             // x-expires 控制队列被自动删除前处于未使用状态的时间 10分钟
             // 未使用的意思是队列上没有任何的消费者，队列也没有被重新声明，并
             // 且在过期时间段 内也未调用过 Basic Get 命令。
-            argss.put("x-expires", 600000);
+            //  argss.put("x-expires", 600000);
             // 队列绑定fanout类型的交换器
-            // 加条件判断，如果队列已经存在，就使用原来的，如果不存在，就新创建一个队列
             AMQP.Queue.DeclareOk declareOk = channel.queueDeclare(reqid, false, false, false, argss);
             this.declareOk = declareOk;
             channel.queueBind(reqid, "fanoutExchange", "");
@@ -110,8 +98,6 @@ public class Websocket2App {
      * 连接关闭调用的方法*/
     @OnClose
     public void onClose(){
-        //将当前连接的websocket对象从集合中删除，让连接数正确
-       /* webSocketToApp2S.remove(uId);*/
         subOnlineCount();
         log.info("有一连接关闭！当前连接数为" + getOnlineCount());
     }
@@ -125,9 +111,6 @@ public class Websocket2App {
         Map map = (Map) JSON.parseObject(message);
         this.reqid = (String) map.get("reqid");
         this.symbol = (String) map.get("symbolname");
-        // 查看货币的市场价格 一般好像是只发送一次请求？
-        //  可以重新声明队列，可是每一次收到请求都要重新声明 不确定会不会对速度有影响
-
         // 获取到要过滤货币的值
         try {
             channel.basicConsume(reqid, new Consumer() {
